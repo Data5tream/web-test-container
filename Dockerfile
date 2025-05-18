@@ -9,17 +9,15 @@ RUN cargo build --release
 # Build healthcheck
 FROM rust:1.87-bookworm AS healthcheck-builder
 
-WORKDIR /app
-COPY healthcheck /app/
-RUN cargo build --release
+RUN cargo install simple-web-healthcheck
 
 # Copy the binary to distroless
 FROM gcr.io/distroless/cc-debian12
+COPY --from=healthcheck-builder /usr/local/cargo/bin/simple-web-healthcheck /healthcheck
 COPY --from=app-builder /app/target/release/web-test-container /
-COPY --from=healthcheck-builder /app/target/release/healthcheck /
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=10s --timeout=1s CMD ["/healthcheck"]
+HEALTHCHECK --interval=10s --timeout=1s CMD ["/healthcheck", "http://127.0.0.1:8080/ping"]
 
 CMD ["/web-test-container"]
